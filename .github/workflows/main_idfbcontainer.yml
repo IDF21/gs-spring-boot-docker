@@ -1,0 +1,51 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy container app to Azure Web App - idfbcontainer
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: 'ubuntu-latest'
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Log in to registry
+      uses: docker/login-action@v1
+      with:
+        registry: https://idfcontainer.azurecr.io/
+        username: ${{ secrets.AzureAppService_ContainerUsername_b490e15b4ffc47cd81e5757c259d76b6 }}
+        password: ${{ secrets.AzureAppService_ContainerPassword_b58135bf3e664aa4b87377646d58d480 }}
+
+    - name: Build and push container image to registry
+      uses: docker/build-push-action@v2
+      with:
+        push: true
+        tags: idfcontainer.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_b490e15b4ffc47cd81e5757c259d76b6 }}/huhjy:${{ github.sha }}
+        file: ./Dockerfile
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: 'production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: Deploy to Azure Web App
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'idfbcontainer'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_e5b037a489334fcf9f336d8b9e7f8783 }}
+        images: 'idfcontainer.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_b490e15b4ffc47cd81e5757c259d76b6 }}/huhjy:${{ github.sha }}'
